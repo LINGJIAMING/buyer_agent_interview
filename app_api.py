@@ -20,12 +20,17 @@ from config import (
     ENABLE_BUSINESS_API,
     BUSINESS_API_MODE,
     BUSINESS_API_LOG_DIR,
+    ENABLE_SOP_RAG,
+    RAG_BM25_ONLY,
+    RAG_USE_RERANK,
+    RAG_SOP_TOP_K,
 )
 from generator import build_messages, log_trace
 from llm_providers import LlmApiClient, LlmApiConfig
 from query_optimizer import QueryOptimizer
 from router import route_query, detect_subtask
 from retriever import Retriever
+from rag.merged_retriever import MergedRetriever
 from business.executor import BusinessActionExecutor
 from business.schemas import AgentActionType
 
@@ -39,7 +44,15 @@ class BuyerAgentApiApp:
         self.llm = LlmApiClient(llm_config)
         self.llm_config = llm_config
         self.verbose = verbose
-        self.retriever = Retriever(POLICY_KB_PATH)
+        if ENABLE_SOP_RAG:
+            self.retriever = MergedRetriever(
+                POLICY_KB_PATH,
+                sop_top_k=RAG_SOP_TOP_K,
+                use_rerank=RAG_USE_RERANK,
+                bm25_only=RAG_BM25_ONLY,
+            )
+        else:
+            self.retriever = Retriever(POLICY_KB_PATH)
         self.history: list[dict[str, str]] = []
         self.session_entities: dict[str, str] = {}
         self.query_optimizer = (
@@ -108,6 +121,10 @@ class BuyerAgentApiApp:
         strong_hit = retrieved_result["strong_hit"]
         low_confidence = retrieved_result.get("low_confidence", False)
         follow_up_question = retrieved_result.get("follow_up_question", "")
+        rag_meta = {
+            "retrieval_method": retrieved_result.get("retrieval_method"),
+            "sop_chunk_ids": retrieved_result.get("sop_chunk_ids"),
+        }
 
         messages = build_messages(
             user_input=working_query,
@@ -123,6 +140,10 @@ class BuyerAgentApiApp:
 
         if self.verbose:
             print(f"[Router] scene={scene} | subtask={subtask}")
+            if retrieved_result.get("retrieval_method") == "merged_policy_sop":
+                print(
+                    f"[RAG] merged | sop_chunks={retrieved_result.get('sop_chunk_ids', [])}"
+                )
 
         response = self.llm.chat(messages, retrieved_context=retrieved_context)
 
@@ -137,7 +158,7 @@ class BuyerAgentApiApp:
             subtask,
             response,
             "llm_api",
-            extra={"model": self.llm_config.resolved_model()},
+            extra={"model": self.llm_config.resolved_model(), **rag_meta},
         )
         return response
 

@@ -23,7 +23,12 @@ from config import (
     ENABLE_BUSINESS_API,
     BUSINESS_API_MODE,
     BUSINESS_API_LOG_DIR,
+    ENABLE_SOP_RAG,
+    RAG_BM25_ONLY,
+    RAG_USE_RERANK,
+    RAG_SOP_TOP_K,
 )
+from rag.merged_retriever import MergedRetriever
 
 
 class BuyerAgentApp:
@@ -33,7 +38,15 @@ class BuyerAgentApp:
             adapter_path=ADAPTER_PATH,
             device_dtype=resolve_device_dtype()
         )
-        self.retriever = Retriever(POLICY_KB_PATH)
+        if ENABLE_SOP_RAG:
+            self.retriever = MergedRetriever(
+                POLICY_KB_PATH,
+                sop_top_k=RAG_SOP_TOP_K,
+                use_rerank=RAG_USE_RERANK,
+                bm25_only=RAG_BM25_ONLY,
+            )
+        else:
+            self.retriever = Retriever(POLICY_KB_PATH)
         self.history = []
         self.session_entities = {}
         self.query_optimizer = (

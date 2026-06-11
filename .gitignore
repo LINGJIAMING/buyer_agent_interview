@@ -17,3 +17,10 @@ Thumbs.db
 *.pt
 *.safetensors
 checkpoints/
+rag/data/ingest_report.json
+rag/data/ragas_results.json
+rag/index/*.pkl
+rag/index/*.npy
+rag/index/faiss.index
+data/sop_raw/
+scripts/

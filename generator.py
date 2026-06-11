@@ -1,7 +1,13 @@
 # generator.py 修复版
 import re
 
-from prompts import BASE_ROLE_PROMPT, OUTPUT_FORMAT, SCENE_PROMPTS, STRONG_HIT_PROMPT
+from prompts import (
+    BASE_ROLE_PROMPT,
+    EVIDENCE_BOUND_PROMPT,
+    OUTPUT_FORMAT,
+    SCENE_PROMPTS,
+    STRONG_HIT_PROMPT,
+)
 from response_utils import inject_links, postprocess_response
 
 def _safe_str(x):
@@ -63,7 +69,7 @@ def build_messages(
         system_content += f"\n\n【场景背景】{scene_detail}"
     
     if retrieved_context and retrieved_context != "未检索到明确相关的政策资料。":
-        system_content += f"\n\n【参考政策资料】\n{retrieved_context}"
+        system_content += f"\n\n{EVIDENCE_BOUND_PROMPT}\n\n【检索证据】\n{retrieved_context}"
     
     if strong_hit == True :
         system_content += f"\n\n{STRONG_HIT_PROMPT}"

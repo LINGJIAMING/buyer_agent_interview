@@ -1,0 +1,25 @@
+{
+  "timestamp": "2026-06-11T10:12:29",
+  "top_k": 5,
+  "note": "仅统计 gold_chunk_ids 非空的样本",
+  "results": [
+    {
+      "experiment": "E0_bm25_only",
+      "total": 50,
+      "eval_mode": "gold_chunk_ids",
+      "gold_labeled_count": 10,
+      "skipped_no_gold": 40,
+      "hit": 5,
+      "recall_at_5": 0.5,
+      "use_rerank": false,
+      "bm25_only": true,
+      "misses": [
+        "rag_eval_002",
+        "rag_eval_003",
+        "rag_eval_004",
+        "rag_eval_009",
+        "rag_eval_010"
+      ]
+    }
+  ]
+}

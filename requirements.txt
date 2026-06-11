@@ -15,3 +15,5 @@ sentence-transformers>=2.2.0
 
 # 可选
 python-dotenv>=1.0.0
+
+# SOP RAG 完整管线见 requirements-rag.txt

@@ -35,3 +35,10 @@ ENABLE_BUSINESS_API = os.getenv("ENABLE_BUSINESS_API", "true").lower() in (
 )
 BUSINESS_API_MODE = os.getenv("BUSINESS_API_MODE", "mock")
 BUSINESS_API_LOG_DIR = os.path.join(PROJECT_ROOT, "log", "business_api")
+
+# SOP RAG 双库（policy_kb + sop_chunks）
+ENABLE_SOP_RAG = os.getenv("ENABLE_SOP_RAG", "true").lower() in ("1", "true", "yes")
+RAG_BM25_ONLY = os.getenv("RAG_BM25_ONLY", "true").lower() in ("1", "true", "yes")
+RAG_USE_RERANK = os.getenv("RAG_USE_RERANK", "false").lower() in ("1", "true", "yes")
+RAG_SOP_TOP_K = int(os.getenv("RAG_SOP_TOP_K", "3"))
+EMBEDDING_MODEL_PATH = os.getenv("EMBEDDING_MODEL_PATH", "")

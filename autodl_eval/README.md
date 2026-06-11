@@ -1,6 +1,6 @@
 # AutoDL 批量推理评测包
 
-上传到实例后，在 **同目录** 下运行即可。无需 Router/RAG，纯对话推理，对比 **基座 Qwen** vs **SFT LoRA（checkpoint-1014）**。
+上传到实例后，在 **同目录** 下运行即可。无需 Router/RAG，纯对话推理，对比 **基座 Qwen** vs **SFT LoRA checkpoint**。
 
 ## 文件说明
 
@@ -37,7 +37,7 @@
 
 ```python
 BASE_MODEL_PATH = "/root/.cache/modelscope/hub/models/qwen/Qwen2___5-7B-Instruct"
-ADAPTER_PATH = "/root/autodl-tmp/LLaMA-Factory/saves/buyer_agent_v2_1/checkpoint-1014"
+ADAPTER_PATH = "/root/autodl-tmp/LLaMA-Factory/saves/buyer_agent_v2_1/checkpoint-XXXX"
 ```
 
 若基座在 `saves/Qwen2.5-7B`，改成对应路径。
