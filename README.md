@@ -96,7 +96,7 @@ python -m rag.run_ablation_eval
 - 内部研发日志、API 调用日志、Cursor 导出脚本
 - `rag_buyer_file/` 原始 PPT/PDF（仅保留结构化 chunk）
 - 模型权重与 LoRA checkpoint
-- API Key（请使用 `.env` 或环境变量，勿提交）
+
 
 ## 技术栈
 
