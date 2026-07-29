@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>买手 Agent</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: #f0f2f5;
+      color: #1f2937;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      background: linear-gradient(135deg, #0d7a4f, #0a5c3a);
+      color: #fff;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    header h1 { margin: 0; font-size: 1.15rem; }
+    header p { margin: 4px 0 0; font-size: 0.8rem; opacity: 0.9; }
+    .links { display: flex; gap: 8px; flex-wrap: wrap; }
+    .links a, .links button {
+      color: #0a5c3a;
+      background: #fff;
+      border: none;
+      border-radius: 999px;
+      padding: 8px 14px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    #gate {
+      background: #fff;
+      border-bottom: 1px solid #e5e7eb;
+      padding: 12px 20px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: flex-end;
+    }
+    #gate label {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 0.75rem;
+      color: #6b7280;
+    }
+    #gate input, #gate select {
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font: inherit;
+      min-width: 140px;
+    }
+    #gate .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    #gate button {
+      background: #0d7a4f;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    #gate button.secondary { background: #374151; }
+    #meta {
+      font-size: 0.75rem;
+      color: #6b7280;
+      padding: 8px 20px;
+      background: #fff;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    #chat {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .msg {
+      max-width: min(720px, 92%);
+      padding: 12px 14px;
+      border-radius: 12px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .user { align-self: flex-end; background: #0d7a4f; color: #fff; }
+    .assistant { align-self: flex-start; background: #fff; border: 1px solid #e5e7eb; }
+    .hint { align-self: center; font-size: 0.8rem; color: #9ca3af; }
+    footer {
+      padding: 12px 20px 16px;
+      background: #fff;
+      border-top: 1px solid #e5e7eb;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    #input, #noteInput {
+      flex: 1;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      padding: 12px 14px;
+      font: inherit;
+      min-width: 160px;
+    }
+    #send, #saveNote {
+      background: #0d7a4f;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 0 18px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    #saveNote { background: #1d4ed8; }
+    #send:disabled { opacity: 0.5; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>买手 Agent</h1>
+      <p>商家隔离记忆 · 操作员本地 Key（不进模型记忆）</p>
+    </div>
+    <div class="links">
+      <a href="/tools/menswear" target="_blank">男装全品类 Prompt</a>
+      <button type="button" id="reset">新会话</button>
+    </div>
+  </header>
+
+  <div id="gate">
+    <label>操作员 ID
+      <input id="operatorId" list="opList" placeholder="如 alice" />
+      <datalist id="opList"></datalist>
+    </label>
+    <label>API Key（仅存本地文件）
+      <input id="apiKey" type="password" placeholder="可选：保存到本机 secrets" autocomplete="off" />
+    </label>
+    <label>商家 ID（记忆主键）
+      <input id="merchantId" placeholder="必填，如 M10086" />
+    </label>
+    <div class="actions">
+      <button type="button" id="saveKey">保存 Key</button>
+      <button type="button" id="enterBtn" class="secondary">进入会话</button>
+    </div>
+  </div>
+
+  <div id="meta">请填写商家 ID 后点「进入会话」</div>
+  <div id="chat">
+    <div class="msg hint">试着问：模特卡怎么填？高价限流怎么申诉？同一商家多轮会记住上下文。</div>
+  </div>
+  <footer>
+    <input id="input" type="text" placeholder="输入商家问题…" disabled />
+    <button id="send" disabled>发送</button>
+    <input id="noteInput" type="text" placeholder="写一条商家长期便签…" disabled />
+    <button id="saveNote" disabled>存便签</button>
+  </footer>
+  <script>
+    const chatEl = document.getElementById("chat");
+    const inputEl = document.getElementById("input");
+    const sendBtn = document.getElementById("send");
+    const metaEl = document.getElementById("meta");
+    const resetBtn = document.getElementById("reset");
+    const operatorEl = document.getElementById("operatorId");
+    const apiKeyEl = document.getElementById("apiKey");
+    const merchantEl = document.getElementById("merchantId");
+    const saveKeyBtn = document.getElementById("saveKey");
+    const enterBtn = document.getElementById("enterBtn");
+    const noteInput = document.getElementById("noteInput");
+    const saveNoteBtn = document.getElementById("saveNote");
+    const opList = document.getElementById("opList");
+
+    let sessionId = localStorage.getItem("buyer_session_id") || "";
+    let ready = false;
+
+    operatorEl.value = localStorage.getItem("buyer_operator_id") || "";
+    merchantEl.value = localStorage.getItem("buyer_merchant_id") || "";
+
+    function addMsg(role, text) {
+      const div = document.createElement("div");
+      div.className = `msg ${role}`;
+      div.textContent = text;
+      chatEl.appendChild(div);
+      chatEl.scrollTop = chatEl.scrollHeight;
+      return div;
+    }
+
+    function setReady(on) {
+      ready = on;
+      inputEl.disabled = !on;
+      sendBtn.disabled = !on;
+      noteInput.disabled = !on;
+      saveNoteBtn.disabled = !on;
+    }
+
+    function refreshMeta(extra) {
+      const op = operatorEl.value.trim() || "(env)";
+      const mid = merchantEl.value.trim() || "-";
+      metaEl.textContent =
+        `operator=${op} · merchant=${mid} · session=${sessionId || "-"}` +
+        (extra || "");
+    }
+
+    async function loadOperators() {
+      try {
+        const res = await fetch("/api/operators");
+        const data = await res.json();
+        opList.innerHTML = "";
+        (data.operators || []).forEach((o) => {
+          const opt = document.createElement("option");
+          opt.value = o.operator_id;
+          opList.appendChild(opt);
+        });
+      } catch (_) {}
+    }
+
+    async function enterSession() {
+      const merchant_id = merchantEl.value.trim();
+      if (!merchant_id) {
+        alert("请填写商家 ID");
+        return;
+      }
+      const prevMerchant = localStorage.getItem("buyer_merchant_id") || "";
+      localStorage.setItem("buyer_merchant_id", merchant_id);
+      localStorage.setItem("buyer_operator_id", operatorEl.value.trim());
+      // 换商家时必须换 session，否则会触发「session_id 与 merchant_id 不匹配」
+      if (!sessionId || prevMerchant !== merchant_id) {
+        sessionId = crypto.randomUUID();
+      }
+      localStorage.setItem("buyer_session_id", sessionId);
+      setReady(true);
+      refreshMeta();
+      addMsg("hint", `已进入商家 ${merchant_id} 的会话（记忆按商家隔离）。`);
+      inputEl.focus();
+    }
+
+    async function saveKey() {
+      const operator_id = operatorEl.value.trim();
+      const api_key = apiKeyEl.value.trim();
+      if (!operator_id || !api_key) {
+        alert("请填写操作员 ID 与 API Key");
+        return;
+      }
+      const res = await fetch("/api/operators/key", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ operator_id, api_key, provider: "deepseek" }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.detail || "保存失败");
+        return;
+      }
+      apiKeyEl.value = "";
+      localStorage.setItem("buyer_operator_id", operator_id);
+      await loadOperators();
+      alert("已保存到本机 secrets/operator_keys.json（不会进入模型记忆）");
+    }
+
+    async function send() {
+      if (!ready) return;
+      const message = inputEl.value.trim();
+      const merchant_id = merchantEl.value.trim();
+      const operator_id = operatorEl.value.trim();
+      if (!message || !merchant_id) return;
+      inputEl.value = "";
+      sendBtn.disabled = true;
+      addMsg("user", message);
+      const pending = addMsg("assistant", "思考中…");
+      try {
+        const res = await fetch("/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message,
+            merchant_id,
+            operator_id,
+            session_id: sessionId,
+            thread_id: sessionId,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || res.statusText);
+        sessionId = data.session_id || data.thread_id;
+        localStorage.setItem("buyer_session_id", sessionId);
+        refreshMeta(
+          (data.scene ? ` · scene=${data.scene}` : "") +
+          (data.subtask ? ` / ${data.subtask}` : "") +
+          (data.response_path ? ` · path=${data.response_path}` : "") +
+          (data.skill_id ? ` · skill=${data.skill_id}` : " · skill=none") +
+          (data.key_source ? ` · key=${data.key_source}` : "")
+        );
+        pending.textContent = data.reply;
+      } catch (err) {
+        pending.textContent = `请求失败: ${err.message}`;
+      } finally {
+        sendBtn.disabled = false;
+        inputEl.focus();
+      }
+    }
+
+    async function saveNote() {
+      const merchant_id = merchantEl.value.trim();
+      const content = noteInput.value.trim();
+      if (!merchant_id || !content) return;
+      const res = await fetch("/api/notes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ merchant_id, content, source: "manual" }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.detail || "保存失败");
+        return;
+      }
+      noteInput.value = "";
+      addMsg("hint", "已写入商家长期便签（下次对话会注入）。");
+    }
+
+    sendBtn.addEventListener("click", send);
+    inputEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") send();
+    });
+    saveKeyBtn.addEventListener("click", saveKey);
+    enterBtn.addEventListener("click", enterSession);
+    saveNoteBtn.addEventListener("click", saveNote);
+    resetBtn.addEventListener("click", async () => {
+      const merchant_id = merchantEl.value.trim();
+      if (!merchant_id) {
+        alert("请先填写商家 ID");
+        return;
+      }
+      const res = await fetch("/chat/reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: "reset",
+          merchant_id,
+          operator_id: operatorEl.value.trim(),
+          session_id: sessionId,
+          thread_id: sessionId,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.detail || "重置失败");
+        return;
+      }
+      sessionId = data.session_id || crypto.randomUUID();
+      localStorage.setItem("buyer_session_id", sessionId);
+      chatEl.innerHTML = "";
+      addMsg("hint", "已新开会话（商家长期便签仍保留）。");
+      refreshMeta();
+      setReady(true);
+    });
+
+    loadOperators();
+    if (merchantEl.value.trim()) {
+      setReady(true);
+      refreshMeta();
+    }
+  </script>
+</body>
+</html>
