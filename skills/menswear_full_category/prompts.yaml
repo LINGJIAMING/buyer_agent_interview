@@ -1,0 +1,741 @@
+# TEMU 男装全品类买手分析 · Prompt 模板库
+# 真相源：本文件；static/全品类.html 为复制用 UI（内容应对齐本文件）
+# 状态：V0 骨架 — 未接入 Router，仅 Skill 包 + Web 侧链展示
+
+skill:
+  id: menswear_full_category
+  name: TEMU男装全品类买手AI分析
+  version: 0.1.0
+  description: 选款/爆款/标题/主图等 Prompt 模板（商家分析用）
+
+prompts:
+  - id: p4
+    html_id: prompt-text-4
+    title: 标题生成Prompt（全品类通用）
+    category: title
+    needs_image: true
+    body: |
+      你现在是一名TEMU标题优化专家。请根据我上传的服装图片，自动识别品类，生成符合TEMU标题治理规范的高搜索英文标题。
+      
+      要求：
+      1. 包含高搜索关键词
+      2. 符合TEMU标题治理
+      3. 不使用品牌词
+      4. 不使用夸大词
+      
+      请参考以下TEMU站内TOP30头部款标题公式：
+      核心公式：[人群] + [品类] + [场景]
+      拓展公式：[人群] + [品类词] + [场景词] + [功能/图案] + [风格] + [季节/版型] + [细节/面料/颜色] + [节日活动]
+      
+      标题维度优先级（按搜索价值排序）：
+      1. 人群词（Men's / Mens / Men / Boys）
+      2. 品类词（根据图片自动识别，如：T-Shirt / Polo Shirt / Hoodie / Sweatshirt / Jacket / Coat / Pants / Jeans / Shorts / Vest / Suit / Cardigan / Pullover / Bomber Jacket / Puffer Jacket / Cargo Pants / Joggers / Overalls 等）
+      3. 场景词（Casual / Work / Outdoor / Daily / Travel / Streetwear / School / Business / Party / Beach / Gym / Athletic）
+      4. 功能词（Breathable / Quick Dry / Lightweight / Warm / Water Resistant / Windproof / Stretch / Moisture Wicking / UV Protection / Compression / Packable / Reversible / Quilted / Padded / Insulated / Anti-Wrinkle / Fleece Lined）
+      5. 风格词（Fashion / Vintage / Retro / Classic / American Style / Minimalist / Streetwear / Preppy / Western / Korean Style / Y2K / Hip Hop / Bohemian / Rugged / Athleisure）
+      6. 图案词（Solid / Color Block / Camouflage / Striped / Print / Embroidery / Letter / Geometric / Plaid / Floral / Tie Dye / Graphic / Patchwork / Colorblock / Argyle）
+      7. 季节词（Spring / Summer / Fall / Autumn / Winter / All Season）
+      8. 版型词（Regular / Slim Fit / Loose / Oversized / Relaxed / Straight / Tapered / Cropped / Skinny / Bootcut / Straight Leg / Relaxed Fit / Athletic Fit）
+      9. 细节词（Pockets / Button / Hooded / Zipper / Drawstring / V-Neck / Crew Neck / Henley / Ribbed Cuffs / Elastic Waist / Belt Loops / Flap Pockets / Chest Pocket / Stand Collar / Open Front / Patch Pockets / Ribbed Hem / Cuffed）
+      10. 面料词（Cotton / Polyester / Denim / Canvas / Nylon / Fleece / PU Leather / Wool / Linen / Cotton Blend / Cotton Twill / French Terry / Knit / Woven / Spandex / Mesh / Corduroy / Flannel / Jersey / Oxford / Chambray / Ribbed Knit）
+      11. 颜色词（Black / White / Navy / Grey / Khaki / Olive / Burgundy / Brown / Beige / Tan / Charcoal / Cream / Dark Green / Maroon / Burgundy / Heather Grey / Sand / Camel / Wine Red / Army Green）
+      12. 节日词（Christmas / Halloween / Thanksgiving / Father's Day / Valentine's Day / Independence Day / St. Patrick's Day / Easter / Holiday Gift / Gift Choice / Back to School / Black Friday）
+      
+      请生成3个标题，每个标题至少覆盖5-8个维度。
+      
+      输出格式：
+      Title 1: [标题]
+      Title 2: [标题]
+      Title 3: [标题]
+      
+      同时输出中文解释，说明每个标题的关键词选择理由。
+
+  - id: p5
+    html_id: prompt-text-5
+    title: 标题诊断优化Prompt（全品类通用）
+    category: title
+    needs_image: false
+    body: |
+      你现在是一名TEMU标题优化专家。
+      
+      我会提供一个已有的TEMU男装标题（可能是任何品类：T恤、衬衫、裤装、夹克、外套、卫衣等），请你诊断该标题的维度覆盖率，并给出优化建议。
+      
+      标题维度检查清单：
+      1. 人群词 — 是否包含Men's/Mens/Men/Boys
+      2. 品类词 — 是否包含核心品类词
+      3. 场景词 — 是否包含使用场景
+      4. 功能词 — 是否包含功能卖点
+      5. 风格词 — 是否包含风格定位（差距最大维度-51.2%）
+      6. 图案词 — 是否包含图案/花色（差距-30.3%）
+      7. 季节词 — 是否包含季节
+      8. 版型词 — 是否包含版型（差距-20.1%）
+      9. 细节词 — 是否包含细节特征（差距-25.8%）
+      10. 面料词 — 是否包含面料
+      11. 颜色词 — 是否包含颜色
+      12. 节日词 — 是否包含节日/活动
+      
+      请输出：
+      1. 维度覆盖率诊断（已覆盖/未覆盖）
+      2. 当前标题评分（0-100分）
+      3. 优化建议（补充哪些维度）
+      4. 3个优化后的新标题版本
+      - 优先补充风格词、场景词和功能词（差距最大的维度）
+
+  - id: p8
+    html_id: prompt-text-8
+    title: TEMU男装主图质量评分Prompt（全品类通用）
+    category: main_image
+    needs_image: true
+    body: |
+      你现在是一名TEMU美国站视觉运营专家+男装全品类买手。
+      我会提供一个男装主图（可能是任何品类：T恤、衬衫、卫衣、裤装、夹克、外套、套装等），请按照TEMU流量逻辑判断这张主图是否具备爆款潜力。
+      你的判断标准：
+      不是看摄影艺术性。
+      而是判断：
+      消费者是否愿意点击。
+      
+      第一部分：品类识别+3秒点击测试
+      1.品类识别：
+      图片中的产品是什么品类？（T恤/衬衫/卫衣/裤装/短裤/夹克/外套/马甲/套装/其他）
+      2.模拟欧美男性消费者：
+      看到这张图片3秒内：
+      是否知道：
+      1.卖什么？
+      YES/NO
+      2.适合什么场景？
+      YES/NO
+      3.为什么值得买？
+      YES/NO
+      评分：
+      ____/10
+      
+      第二部分：主图视觉评分（100分）
+      1. 商品识别度 20分
+      判断：
+      •产品是否完整展示
+      •轮廓是否明显
+      •是否容易识别类别
+      •版型是否清晰可辨
+      评分：
+      __/20
+      
+      2. 点击吸引力 CTR 25分
+      分析：
+      颜色：
+      是否吸睛？
+      构图：
+      是否突出主体？
+      视觉冲击：
+      是否比竞品更容易停留？
+      评分：
+      __/25
+      
+      3. 卖点表达 20分
+      判断：
+      是否展示：
+      □面料质感
+      □版型剪裁
+      □功能特点
+      □细节工艺
+      □特殊设计
+      评分：
+      __/20
+      
+      4. 欧美审美匹配 15分
+      判断：
+      是否符合：
+      Amazon/SHEIN/TEMU欧美人群视觉习惯
+      评分：
+      __/15
+      
+      5. 转化风险 20分
+      扣分：
+      •模特不真实
+      •产品太小
+      •背景杂乱
+      •看不到细节
+      •无场景感
+      •颜色失真
+      评分：
+      __/20
+      
+      第三部分：主图问题诊断
+      输出：
+      当前主图最大问题TOP5：
+      例如：
+      产品太小
+      没有突出面料质感
+      颜色没有冲击
+      
+      第四部分：生成优化方案
+      请给：
+      主图方案1：
+      适合：
+      爆款竞争
+      修改：
+      背景：
+      构图：
+      模特：
+      角度：
+      卖点：
+      
+      主图方案2：
+      适合：
+      低成本拍摄
+      修改：
+      
+      主图方案3：
+      适合：
+      提高转化率
+      修改：
+      
+      第五部分：模拟CTR提升
+      当前预测CTR：
+      X%
+      优化后预测：
+      X%
+      提升原因：
+      
+      第六部分：最终判断
+      输出：
+      主图等级：
+      S级：
+      A级：
+      B级：
+      C级：
+      是否建议重新拍摄：
+      YES/NO
+      
+      最终格式：
+      品类：
+      主图评分：
+      XX/100
+      当前问题：
+      优化方向：
+      推荐主图（带图）：
+      预计CTR提升：
+      XX%
+
+  - id: p1
+    html_id: prompt-text-1
+    title: 单款分析Prompt（全品类通用）
+    category: selection
+    needs_image: true
+    body: |
+      你现在是一名TEMU美国站男装全品类高级买手，负责新品开发和爆款筛选。
+      请根据我上传的服装图片（可能是任何男装品类），从TEMU全托上架和欧美市场销售角度分析。
+      不要按照中国审美评价，而按照：
+      •temu使用人群消费者购买习惯
+      •TEMU流量逻辑
+      •搜索关键词趋势
+      •爆款图片点击逻辑
+      •价格竞争力
+      •供应链优势
+      进行判断。
+      
+      第一部分：图片识别
+      请识别：
+      1. 产品信息
+      输出：
+      •中文款名：
+      •英文款名：
+      •一级类目：（上装/下装/外套/套装/内衣配饰）
+      •二级类目：（T恤/衬衫/卫衣/夹克/裤装/短裤等）
+      •风格：
+      •适合季节：
+      •目标年龄：
+      例如：
+      Men's Vintage Work Jacket
+      Workwear / Casual / Outdoor
+      25-45岁男性
+      
+      第二部分：TEMU爆款画像分析
+      请分析：
+      1. 欧美市场接受度
+      评分：
+      0-10分
+      理由：
+      
+      2. TEMU搜索价值
+      判断该款对应哪些关键词：
+      生成：
+      核心关键词：
+      Top Keywords:
+      并判断：
+      关键词价值：
+      高 / 中 / 低
+      
+      3. 图片点击潜力
+      按照TEMU主图逻辑分析：
+      评分：
+      0-10分
+      分析：
+      •是否第一眼知道是什么产品
+      •是否突出卖点
+      •是否符合欧美视觉习惯
+      如果图片点击不足：
+      提出优化方案。
+      
+      第三部分：爆款概率评分
+      按照100分模型：
+      输出表格：
+      项目    分数
+      市场趋势    20
+      欧美接受度    15
+      图片点击    15
+      关键词价值    15
+      竞争环境    10
+      供应链优势    10
+      差异化    10
+      风险扣分    -20
+      总分    100
+      
+      第四部分：销量预测
+      按照TEMU新品冷启动：
+      假设：
+      售价：
+      根据品类合理定价（T恤$8-$15 / 衬衫$12-$20 / 卫衣$15-$25 / 裤装$15-$25 / 外套$19-$30 / 套装$25-$40）
+      美国站
+      全托模式
+      预测：
+      7天销量：
+      30天销量：
+      90天销量：
+      并给出：
+      爆款概率：
+      A/B/C/D
+      
+      第五部分：竞品分析
+      请模拟：
+      该款可能竞争：
+      Amazon：
+      Shein：
+      Temu：
+      上的哪些产品。
+      分析：
+      竞争强度：低 / 中 / 高
+      
+      第六部分：改款建议
+      如果值得开发：
+      提出：
+      颜色建议：
+      TOP3颜色
+      面料建议：
+      根据品类给出（如Cotton / Polyester / Denim / Canvas / French Terry等）
+      细节优化：
+      例如：
+      •增加口袋
+      •去掉LOGO
+      •增加水洗
+      •修改版型
+      •调整领型
+      •改拉链/纽扣
+      
+      第七部分：最终买手决策
+      请输出：
+      是否建议上架：
+      选择：
+      🔥重点开发
+      ⭐测试款
+      ⚠️谨慎开发
+      ❌不建议
+      理由：
+      100字以内。
+      
+      第八部分：标题生成
+      生成TEMU英文标题：
+      要求：
+      1.包含高搜索关键词
+      2.符合TEMU标题治理
+      3.不使用品牌词
+      4.不使用夸大词
+      输出：
+      Title 1:
+      Title 2:
+      Title 3:
+      同时输出中文解释。
+      
+      最终输出格式：
+      品类：
+      款式：
+      风格：
+      爆款评分：XX/100
+      预计90天销量：XXXX
+      建议：🔥重点开发
+      核心关键词：
+      1.
+      2.
+      3.
+      改款方向：
+      1.
+      2.
+      3.
+      TEMU标题：
+      1.
+      2.
+      3.
+
+  - id: p2
+    html_id: prompt-text-2
+    title: 多款批量分析Prompt（全品类通用）
+    category: selection
+    needs_image: true
+    body: |
+      你现在是一名TEMU美国站男装全品类高级买手，负责新品开发和爆款筛选。
+      请根据我上传的服装图片（包含多款不同品类的男装，可能是T恤、衬衫、裤装、外套、套装等），从TEMU全托上架和欧美市场销售角度逐款分析。
+      不要按照中国审美评价，而按照：
+      •temu使用人群消费者购买习惯
+      •TEMU流量逻辑
+      •搜索关键词趋势
+      •爆款图片点击逻辑
+      •价格竞争力
+      •供应链优势
+      进行判断。
+      
+      对图片中的每一款服装，按照以下格式逐款分析：
+      
+      第一部分：图片识别
+      •中文款名：
+      •英文款名：
+      •一级类目：
+      •二级类目：
+      •风格：
+      •目标年龄：
+      
+      第二部分：TEMU爆款画像分析
+      1. 欧美市场接受度（0-10分+理由）
+      2. TEMU搜索价值（核心关键词+关键词价值高/中/低）
+      3. 图片点击潜力（0-10分+优化方案）
+      
+      第三部分：爆款概率评分（100分模型表格）
+      
+      第四部分：销量预测（根据品类合理定价，7天/30天/90天+爆款概率A/B/C/D）
+      
+      第五部分：竞品分析（Amazon/Shein/Temu+竞争强度）
+      
+      第六部分：改款建议（颜色TOP3+面料+细节优化）
+      
+      第七部分：最终买手决策（🔥重点开发/⭐测试款/⚠️谨慎开发/❌不建议）
+      
+      第八部分：标题生成（Title 1/2/3+中文解释）
+      
+      最后输出汇总对比表格：
+      | 款式 | 品类 | 风格 | 爆款评分 | 预计90天销量 | 建议 | 核心关键词 | 改款方向 | TEMU标题 |
+      并对所有款式进行优先级排序（P0/P1/P2/P3）。
+
+  - id: p3
+    html_id: prompt-text-3
+    title: 竞品对标分析Prompt（全品类通用）
+    category: selection
+    needs_image: true
+    body: |
+      你现在是一名TEMU美国站男装全品类高级买手。
+      我会提供一张服装图片（可能是任何男装品类），请你模拟该款在Amazon、Shein、Temu三个平台上的竞品情况。
+      
+      请分析：
+      1. Amazon上可能有哪些类似产品？价格区间？评价情况？
+      2. Shein上可能有哪些类似产品？价格区间？风格定位？
+      3. Temu上可能有哪些类似产品？价格区间？销量情况？
+      
+      竞争强度：低 / 中 / 高
+      
+      基于竞品分析，给出：
+      1. TEMU定价建议（应该定多少钱？参考品类合理价格带）
+      2. 差异化机会（哪里可以做出差异？）
+      3. 上架建议（应该怎么打？）
+
+  - id: p6
+    html_id: prompt-text-6
+    title: 爆款延展开发Prompt（品质分析版 · 全品类）
+    category: selection
+    needs_image: true
+    body: |
+      你现在是一名TEMU美国站男装全品类高级买手，擅长爆款延展开发。
+      
+      我已经有一款在TEMU美国站跑出的男装爆款（可能是任何品类），具体信息如下：
+      
+      【爆款基本信息】
+      • 中文款名：[填写，如：美式纯棉圆领短袖T恤]
+      • 英文款名：[填写，如：Men's Cotton Crew Neck T-Shirt]
+      • 品类：[填写，如：T恤/衬衫/卫衣/裤装/外套/套装]
+      • 当前售价：[填写，如：$8.99]
+      • 日均销量：[填写，如：日均120单]
+      • 爆款颜色：[填写，如：Black / White / Navy]
+      • 核心搜索词：[填写，如：Men's T-Shirt / Cotton Tee / Crew Neck Shirt]
+      • 爆款季节：[填写，如：春夏]
+      
+      请基于以上爆款信息，进行爆款延展开发分析：
+      
+      第一部分：爆款成功要素拆解
+      分析该爆款为什么会成功：
+      1. 核心品类红利：属于什么品类趋势？
+      2. 关键词红利：哪些关键词搜索量在增长？
+      3. 价格优势：定价策略为何有效？
+      4. 视觉优势：主图/详情页有什么特点？
+      5. 供应链优势：成本结构分析
+      
+      第二部分：延展方向矩阵
+      基于爆款核心DNA，从以下6个维度生成延展款建议：
+      
+      维度1：颜色延展（Color Extension）
+      • 当前爆款颜色有哪些？
+      • 建议新增哪些颜色？（给出3-5个颜色建议+理由）
+      • 每个新颜色的目标人群和搜索词
+      
+      维度2：面料延展（Fabric Extension）
+      • 当前爆款面料是什么？
+      • 建议哪些替代面料？（如Cotton→Cotton Blend / Bamboo / Modal / French Terry）
+      • 每种面料的成本差异和卖点
+      
+      维度3：功能延展（Function Extension）
+      • 当前款有什么功能？
+      • 可以增加哪些功能？（如Moisture Wicking / Quick Dry / UV Protection / Anti-Wrinkle / Fleece Lined）
+      • 每个功能延展的增量成本和溢价空间
+      
+      维度4：版型延展（Fit Extension）
+      • 当前版型是什么？
+      • 建议哪些版型变体？（如Regular→Slim Fit / Oversized / Relaxed / Cropped）
+      • 每个版型的目标人群
+      
+      维度5：风格延展（Style Extension）
+      • 当前风格定位是什么？
+      • 可以拓展哪些子风格？（如Basic→Streetwear / Vintage / Y2K / Athleisure）
+      • 每个风格延展的设计改动点
+      
+      维度6：品类延展（Category Extension）
+      • 基于同一设计DNA，可以延展到哪些相关品类？
+      • 如：T-Shirt→Long Sleeve Tee / Tank Top / Hoodie / Polo（同面料同风格）
+      • 如：Pants→Shorts / Joggers / Cargo Pants（同版型不同长度/功能）
+      • 每个品类延展的市场机会评估
+      
+      第三部分：延展款优先级排序
+      对所有延展建议打分排序：
+      • 开发难度（1-5分，越低越容易）
+      • 预计销量（1-5分，越高越好）
+      • 供应链匹配度（1-5分）
+      • 市场竞争度（1-5分，越低越好）
+      • 综合评分
+      给出TOP5优先开发的延展款。
+      
+      第四部分：延展款上架策略
+      • 首批延展款建议备几个SKU？
+      • 定价策略（是否比原爆款加价？加多少？）
+      • 上架节奏（同时上还是分批上？）
+      • 是否建议做变体Group（同一Listing多色/多版型）？
+      
+      第五部分：风险提示
+      • 延展款可能踩的坑
+      • 与原爆款是否会产生内部竞争（Cannibalization）
+      • 库存风险提示
+
+  - id: p7
+    html_id: prompt-text-7
+    title: 爆款变体AB测试Prompt（上架数据测试版 · 全品类）
+    category: selection
+    needs_image: false
+    body: |
+      你现在是一名TEMU美国站男装全品类高级买手，擅长爆款变体策略和数据驱动选款。
+      
+      我有一款TEMU美国站男装爆款（可能是任何品类），我打算基于该爆款开发延展变体款。
+      
+      【爆款信息】
+      • 品类：[填写，如T恤/衬衫/卫衣/裤装/外套/套装]
+      • 款式描述：[填写爆款的款式、颜色、面料、风格]
+      • 核心卖点：[填写，如：价格低、面料舒适、版型好]
+      • 日均销量：[填写]
+      • 主要搜索词：[填写]
+      • 好评关键词：[填写买家好评中出现频率高的词，如comfortable / soft / good fit]
+      • 差评关键词：[填写买家差评中出现频率高的词，如runs small / fades after wash / thin material]
+      
+      请基于以上信息，生成爆款变体AB测试方案：
+      
+      第一部分：变体方向生成（至少6个方向）
+      从以下角度生成变体方向，每个方向需有明确的差异化定位：
+      
+      变体A：解决差评痛点型
+      • 针对差评中最集中的问题（如runs small），做针对性改进
+      • 改动点：[具体改动]
+      • 预期效果：差评率下降X%，复购率提升
+      
+      变体B：颜色扩展型
+      • 基于当前爆款颜色，新增什么颜色？
+      • 新颜色的搜索量和竞争度分析
+      • 新颜色的目标人群
+      
+      变体C：升级加配型
+      • 在原款基础上增加什么配置？（如加口袋、改面料、加功能）
+      • 增量成本和售价建议
+      • 升级后的目标人群（是否可以提价？）
+      
+      变体D：降本减配型
+      • 原款哪些配置可以简化以降低成本？
+      • 减配后的成本节省
+      • 是否可以降价冲量？降价多少？
+      
+      变体E：季节延展型
+      • 原款适合什么季节？如何延展到其他季节？
+      • 如短袖→长袖 / 薄款→加绒款
+      • 延展后的面料和设计调整
+      
+      变体F：风格裂变型
+      • 原款是什么风格？裂变出什么子风格？
+      • 如Basic→Streetwear / Classic→Vintage / Casual→Athleisure
+      • 风格裂变的设计改动点
+      
+      第二部分：AB测试预判
+      对每个变体方向进行预判评分：
+      | 变体 | 开发难度 | 预计日销 | 成本变化 | 售价建议 | 利润率 | 内部竞争风险 | 综合评分 |
+      
+      第三部分：首批AB测试推荐
+      • 推荐首批做哪2-3个变体？（最小化开发风险，最大化信息收获）
+      • 每个变体的测试周期建议（多少天看数据？）
+      • 关键指标：CTR、CVR、退款率、日均销量
+      • 判定标准：什么数据下追单？什么数据下砍掉？
+      
+      第四部分：变体上架节奏
+      • Phase 1（第1-2周）：上架哪几个变体？
+      • Phase 2（第3-4周）：根据Phase 1数据决定追单/砍掉/新增
+      • Phase 3（第5-8周）：确定最终变体矩阵
+      
+      第五部分：变体Group策略
+      • 哪些变体适合放在同一个Listing下做变体Group？
+      • 哪些变体应该独立Listing？
+      • 变体Group的利弊分析
+
+  - id: p9
+    html_id: prompt-text-9
+    title: 爆款延展开发Prompt（基础带图版 · 全品类）
+    category: selection
+    needs_image: false
+    body: |
+      你现在是一名TEMU美国站男装全品类高级买手+商品开发经理。
+      我会提供一个已经验证市场销量较好的男装款式（可能是任何品类），请你不要简单评价，而是按照「爆款二次开发」逻辑进行分析。
+      目标：
+      在保留原款销量基础的情况下，通过：
+      •面料升级
+      •颜色变化
+      •版型调整
+      •功能增加
+      •细节变化
+      •风格迁移
+      开发出新的潜力爆款。
+      
+      第一部分：爆款基因拆解
+      请分析：
+      1. 为什么这个款卖得好？
+      从以下维度拆解：
+      产品层面
+      •品类：
+      •版型：
+      •廓形：
+      •面料：
+      •颜色：
+      •功能：
+      •细节工艺：
+      用户层面
+      目标消费者：
+      年龄：
+      场景：
+      购买理由：
+      
+      输出：
+      这个款最核心卖点：
+      TOP3：
+      
+      第二部分：不可改变元素分析
+      请判断：
+      以下哪些必须保留：
+      元素        保留程度
+      品类        必须/可调整
+      版型        必须/可调整
+      颜色        必须/可调整
+      面料        必须/可调整
+      领型/腰型   必须/可调整
+      风格标签    必须/可调整
+      
+      第三部分：生成改款方案
+      请提供至少5个改款方向。
+      格式：
+      方案1：
+      改款（请附图）：
+      修改：
+      预计提升：
+      价格力：
+      竞争力：
+      爆款概率：
+      
+      必须覆盖：
+      方向A：
+      低成本改款
+      目标：
+      不增加供应链难度
+      例如：
+      •换颜色
+      •改辅料
+      •改刺绣/印花
+      •改纽扣/拉链
+      
+      方向B：
+      提升客单价改款
+      目标：
+      卖更高价格
+      例如：
+      •面料升级
+      •加内里/夹层
+      •增加功能
+      
+      方向C：
+      欧美趋势迁移
+      例如：
+      Basic → Streetwear
+      Classic → Vintage
+      Casual → Athleisure
+      Workwear → Outdoor
+      
+      方向D：
+      品类延展
+      例如：
+      T-Shirt → Long Sleeve / Tank Top / Hoodie
+      Pants → Shorts / Joggers
+      Jacket → Vest
+      
+      第四部分：颜色开发建议
+      根据欧美男性购买习惯：
+      输出：
+      TOP10颜色组合
+      格式：
+      颜色英文：
+      适合原因：
+      商业价值：
+      例如：
+      Washed Black
+      原因：
+      符合Vintage趋势
+      商业价值：
+      ★★★★★
+      
+      第五部分：最终开发建议
+      输出：
+      如果我是TEMU买手：
+      这个款应该：
+      □直接复制
+      □轻改款
+      □深度开发
+      □放弃
+      推荐开发3个SKU：
+      SKU1：
+      SKU2：
+      SKU3：
+      
+      最终格式：
+      品类：
+      原款：
+      爆款原因：
+      核心卖点：
+      改款方向：
+      方案1（请附图）：
+      方案2（请附图）：
+      方案3（请附图）：
+      推荐颜色：
+      最终建议：
+      ★★★★★开发

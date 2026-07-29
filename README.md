@@ -20,6 +20,7 @@ py -3.9 -m uvicorn web_server:app --reload --host 127.0.0.1 --port 8001
 |------|------|
 | http://127.0.0.1:8001 | 聊天 |
 | http://127.0.0.1:8001/health | Key / 记忆库状态 |
+| http://127.0.0.1:8001/tools/menswear | 男装全品类 Prompt 工具页（侧链） |
 
 Windows 可双击 `启动网页.bat`（需已安装 Python 3.9）。
 
@@ -30,6 +31,7 @@ User（浏览器 / cli_api）
   → Query Optimizer → Router
   → L1 精确缓存 → L2 语义缓存 → L3 FAQ（policy 直出）
   → Business API（备货/核价 Mock）
+  → Skill 选择器（男装分析模板，可选）
   → MergedRetriever（policy_kb + sop_chunks）
   → LLM + Evidence-bound Prompt
 ```
@@ -45,6 +47,7 @@ User（浏览器 / cli_api）
 ├── router.py query_optimizer.py
 ├── rag/                         # SOP 入库 · 混合检索 · 评测
 ├── business/                    # 备货 / 核价
+├── skills/                      # 分析 Skill 注册表 + 男装 Prompt 包
 ├── kb/ data/                    # 政策、FAQ、Router/注入评测集
 ├── scripts/                     # build_policy_faq 等
 └── docs/                        # 架构、变更摘要、上传清单
@@ -68,9 +71,8 @@ python -m rag.run_eval_recall --bm25-only --no-rerank
 | **Router** | 8 类场景，50 条评测 V2 100% |
 | **RAG** | 双库 merge、Evidence 约束、Recall/RAGAS |
 | **Business** | Pydantic 槽位 + Mock API |
+| **Skill 注册表** | `skills/menswear_full_category`；聊天内选择器 + `/tools/menswear` |
 | **安全评测** | `run_prompt_injection_eval.py`（50 条） |
-
-## 文档
 
 - [ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - [CHANGELOG_2026-07.md](docs/CHANGELOG_2026-07.md)

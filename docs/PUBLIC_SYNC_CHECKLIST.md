@@ -11,7 +11,7 @@
 | `data/prompt_injection_eval_50.jsonl` | ✅ 已上传 | 仅测试用例，无真实商家对话 |
 | `kb/policy_kb.jsonl` / `.md` | ✅ 保留 | 政策摘要（展示用） |
 | `rag/data/sop_chunks.jsonl` | ✅ 保留 | 已 redact 内网链 |
-| `skills/` 男装 Prompt 包 | ⬜ **未同步** | 体积大、含业务 Prompt；若要公开请回复「可上传 skills」 |
+| `skills/` 男装 Prompt 包 | ✅ 已上传 | `menswear_full_category`：registry + prompts.yaml + 全品类.html |
 | `log/api_chat.jsonl` 真实对话 | ❌ 不上传 | 含商家原话 |
 | `data/response_cache.jsonl` | ❌ 不上传 | 可能含用户问法 |
 | `data/buyer_memory.db` | ❌ 不上传 | 本地会话库 |
@@ -21,4 +21,4 @@
 | `eval_output/` 含完整模型回复 | ❌ 不上传 | 评测 JSON 可脱敏后单独加 |
 | 简历 / 面试记录 / 手机号邮箱 | ❌ 不上传 | 不进本仓库 |
 
-**2026-07-29 同步说明**：已按上表默认「安全项」分 4 个 commit 推送；若你希望撤回 FAQ 或补传 `skills/`，在本地 main 改清单后重新同步。
+**2026-07-29 同步说明**：FAQ/缓存/Web 已推送；**skills/** 男装包已按维护者确认补传。

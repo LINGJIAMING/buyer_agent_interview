@@ -16,7 +16,8 @@
 2. Router → scene / subtask
 3. L1 Exact cache → L2 Semantic cache → L3 FAQ BM25（policy_direct，不调 LLM）
 4. BusinessActionExecutor（备货/核价 Mock）
-5. MergedRetriever → Evidence-bound LLM
+5. Skill 选择器 + `skills/menswear_full_category`（分析模板，可选）
+6. MergedRetriever → Evidence-bound LLM
 ```
 
 `ENABLE_FAQ_LAYER` / `ENABLE_RESPONSE_CACHE` 见 `config.py`。

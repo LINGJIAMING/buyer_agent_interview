@@ -19,6 +19,7 @@
 - `kb/policy_kb.md` / `policy_kb.jsonl` — 政策要点
 - `data/faq_published.jsonl` — 由 policy 衍生的 FAQ（含公开平台链接）
 - `data/router_eval_50.jsonl`、`data/prompt_injection_eval_50.jsonl` — 评测用例
+- `skills/menswear_full_category/` — Prompt 模板 YAML + 静态工具页
 
 ## 复现索引
 
