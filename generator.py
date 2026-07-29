@@ -46,35 +46,56 @@ def build_messages(
     strong_hit=False,
     subtask="",
     low_confidence=False,
-    follow_up_question=""
+    follow_up_question="",
+    skill_body: str = "",
+    use_rag_evidence: bool = True,
+    merchant_notes: str = "",
 ):
-    """构建消息，修复：history 默认参数、int 类型转换"""
-    
+    """构建消息。skill_body 非空时注入分析 Skill，并默认弱化聊天格式约束。"""
+
     # 强制转 int，防止传入字符串 "3"
     max_history_rounds = int(max_history_rounds) if max_history_rounds else 3
     history = history or []
-    
+
     # 1. 系统提示组装
-    
     system_content = BASE_ROLE_PROMPT
-    
+
     scene_detail = SCENE_PROMPTS.get(scene, "")
     has_subtask = subtask and subtask != "未细分"
-    
-    if has_subtask:
-        # 此时模型注意力集中在具体任务上，减少干扰
-        system_content += f"\n\n【当前执行任务】{subtask}"
-    elif scene_detail:
-        # 仅在没有具体子任务时，才提供大场景的背景说明
-        system_content += f"\n\n【场景背景】{scene_detail}"
-    
-    if retrieved_context and retrieved_context != "未检索到明确相关的政策资料。":
-        system_content += f"\n\n{EVIDENCE_BOUND_PROMPT}\n\n【检索证据】\n{retrieved_context}"
-    
-    if strong_hit == True :
+
+    notes = (merchant_notes or "").strip()
+    if notes:
+        system_content += (
+            "\n\n" + notes +
+            "\n（以上为该商家长期便签，请结合本轮问题使用；"
+            "不要编造便签未提及的事实。）"
+        )
+
+    if skill_body:
+        system_content += (
+            "\n\n【分析 Skill 已启用】请严格按下列模板完成任务；"
+            "若缺图片/标题等必要输入，先用一句话说明缺什么并给出可执行的下一步。"
+            f"\n\n{skill_body}"
+        )
+    else:
+        if has_subtask:
+            system_content += f"\n\n【当前执行任务】{subtask}"
+        elif scene_detail:
+            system_content += f"\n\n【场景背景】{scene_detail}"
+
+    if (
+        use_rag_evidence
+        and retrieved_context
+        and retrieved_context != "未检索到明确相关的政策资料。"
+    ):
+        system_content += (
+            f"\n\n{EVIDENCE_BOUND_PROMPT}\n\n【检索证据】\n{retrieved_context}"
+        )
+
+    if use_rag_evidence and strong_hit is True:
         system_content += f"\n\n{STRONG_HIT_PROMPT}"
 
-    if low_confidence:
+    if use_rag_evidence and low_confidence:
         system_content += (
             "\n\n【低置信度处理要求】当前检索置信度较低，"
             "请不要直接给确定性规则结论，先用一句自然的话补问1-2个关键事实。"
@@ -82,17 +103,23 @@ def build_messages(
         if follow_up_question:
             system_content += f"\n建议追问：{follow_up_question}"
 
-
-    VALID_ROLES = {"system", "user", "assistant"}
-    
-
-
     # 关键修复：policy 场景强制约束，防止幻觉
-    if scene == "policy" and not retrieved_context:
-        system_content += "\n\n【重要】未检索到相关政策资料，请明确告知用户当前无法回答，禁止编造。"
-    
-   
-    system_content += f"\n\n{OUTPUT_FORMAT}"
+    if (
+        not skill_body
+        and scene == "policy"
+        and not retrieved_context
+    ):
+        system_content += (
+            "\n\n【重要】未检索到相关政策资料，请明确告知用户当前无法回答，禁止编造。"
+        )
+
+    if skill_body:
+        system_content += (
+            "\n\n【输出】按 Skill 模板要求的结构输出即可；"
+            "不要编造罚款金额、未给出的链接或后台操作承诺。"
+        )
+    else:
+        system_content += f"\n\n{OUTPUT_FORMAT}"
 
     # 2. 组装 messages
     messages = [{"role": "system", "content": system_content}]

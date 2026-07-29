@@ -24,6 +24,13 @@ from config import (
     RAG_BM25_ONLY,
     RAG_USE_RERANK,
     RAG_SOP_TOP_K,
+    ENABLE_SKILL_SELECTOR,
+    ENABLE_FAQ_LAYER,
+    ENABLE_RESPONSE_CACHE,
+    FAQ_PUBLISHED_PATH,
+    FAQ_MIN_BM25_SCORE,
+    CACHE_SEMANTIC_THRESHOLD,
+    RESPONSE_CACHE_PATH,
 )
 from generator import build_messages, log_trace
 from llm_providers import LlmApiClient, LlmApiConfig
@@ -33,6 +40,9 @@ from retriever import Retriever
 from rag.merged_retriever import MergedRetriever
 from business.executor import BusinessActionExecutor
 from business.schemas import AgentActionType
+from skills import get_skill, select_skill
+from faq.policy_faq import PolicyFaqIndex, format_policy_direct
+from cache.response_cache import BuyerResponseCache
 
 CHAT_LOG_DIR = Path(__file__).resolve().parent / "log" / "api_chat"
 
@@ -70,14 +80,77 @@ class BuyerAgentApiApp:
             else None
         )
         CHAT_LOG_DIR.mkdir(parents=True, exist_ok=True)
+        self.last_turn_meta: dict = {}
+        self.faq_index: PolicyFaqIndex | None = None
+        self.response_cache: BuyerResponseCache | None = None
+        if ENABLE_FAQ_LAYER:
+            self.faq_index = PolicyFaqIndex(
+                FAQ_PUBLISHED_PATH,
+                min_score=FAQ_MIN_BM25_SCORE,
+            )
+        if ENABLE_RESPONSE_CACHE:
+            self.response_cache = BuyerResponseCache(
+                semantic_threshold=CACHE_SEMANTIC_THRESHOLD,
+                persist_path=Path(RESPONSE_CACHE_PATH),
+            )
+
+    def _try_policy_fast_path(self, working_query: str) -> Optional[str]:
+        """L1/L2 缓存 → FAQ（政策直出），跳过 LLM 与买手润色。"""
+        if self.response_cache:
+            cached = self.response_cache.lookup(working_query)
+            if cached and cached.get("response"):
+                self.last_turn_meta = {
+                    "path": "cache_policy_direct",
+                    "cache_level": cached.get("cache_level"),
+                    "faq_id": cached.get("faq_id"),
+                    "response_mode": "policy_direct",
+                }
+                if self.verbose:
+                    print(
+                        f"[Cache] L{cached.get('cache_level')} hit | "
+                        f"faq_id={cached.get('faq_id', '')}"
+                    )
+                return str(cached["response"])
+
+        if not self.faq_index or self.faq_index.count() == 0:
+            return None
+
+        hit = self.faq_index.match(working_query)
+        if not hit:
+            return None
+
+        reply = format_policy_direct(hit.entry)
+        if self.response_cache:
+            self.response_cache.remember_policy_direct(
+                working_query,
+                reply,
+                faq_id=hit.faq_id,
+                source="faq",
+            )
+        self.last_turn_meta = {
+            "path": "faq_direct",
+            "faq_id": hit.faq_id,
+            "faq_score": hit.score,
+            "response_mode": "policy_direct",
+        }
+        if self.verbose:
+            print(f"[FAQ] policy_direct | {hit.faq_id} score={hit.score:.1f}")
+        return reply
 
     def reset_history(self):
         self.history = []
         self.session_entities = {}
+        self.last_turn_meta = {}
         if self.query_optimizer:
             self.query_optimizer.reset_session()
 
-    def chat(self, user_input: str) -> str:
+    def chat(
+        self,
+        user_input: str,
+        *,
+        merchant_notes: str = "",
+        max_history_rounds: Optional[int] = None,
+    ) -> str:
         working_query = user_input
         if self.query_optimizer:
             opt = self.query_optimizer.optimize(
@@ -97,6 +170,29 @@ class BuyerAgentApiApp:
         scene = route_query(working_query)
         subtask = detect_subtask(scene, working_query)
 
+        fast = self._try_policy_fast_path(working_query)
+        if fast is not None:
+            self.last_turn_meta["scene"] = scene
+            self.last_turn_meta["subtask"] = subtask
+            self.last_turn_meta["skill_id"] = None
+            self.last_turn_meta["skill_reason"] = ""
+            self._append_history(user_input, fast)
+            self._log_turn(
+                user_input,
+                working_query,
+                scene,
+                subtask,
+                fast,
+                self.last_turn_meta.get("path", "faq_direct"),
+                extra={
+                    "faq_id": self.last_turn_meta.get("faq_id"),
+                    "cache_level": self.last_turn_meta.get("cache_level"),
+                    "faq_score": self.last_turn_meta.get("faq_score"),
+                    "response_mode": "policy_direct",
+                },
+            )
+            return fast
+
         if self.business_executor:
             action_out = self.business_executor.try_execute(
                 working_query, scene, subtask
@@ -114,51 +210,114 @@ class BuyerAgentApiApp:
                         f"api_called={action_out.api_called}"
                     )
                 self._log_turn(user_input, working_query, scene, subtask, reply, "business_api")
+                self.last_turn_meta = {
+                    "scene": scene,
+                    "subtask": subtask,
+                    "skill_id": None,
+                    "skill_reason": "business_api",
+                }
                 return reply
 
-        retrieved_result = self.retriever.retrieve_context(working_query, scene=scene)
-        retrieved_context = retrieved_result["context"]
-        strong_hit = retrieved_result["strong_hit"]
-        low_confidence = retrieved_result.get("low_confidence", False)
-        follow_up_question = retrieved_result.get("follow_up_question", "")
-        rag_meta = {
-            "retrieval_method": retrieved_result.get("retrieval_method"),
-            "sop_chunk_ids": retrieved_result.get("sop_chunk_ids"),
-        }
+        # Skill 选择：模型看注册表目录，决定是否启用分析模板
+        skill_id = None
+        skill_reason = ""
+        skill_body = ""
+        use_rag = True
+        if ENABLE_SKILL_SELECTOR:
+            selection = select_skill(self.llm, working_query)
+            skill_id = selection.skill_id
+            skill_reason = selection.reason
+            if skill_id:
+                entry = get_skill(skill_id)
+                if entry:
+                    skill_body = entry.body
+                    use_rag = False  # 分析 Skill 与政策证据约束分流
+                    if self.verbose:
+                        print(
+                            f"[Skill] selected={skill_id} | {skill_reason} | "
+                            f"title={entry.title}"
+                        )
+                else:
+                    skill_id = None
+            elif self.verbose:
+                print(f"[Skill] none | {skill_reason}")
 
+        retrieved_context = ""
+        strong_hit = False
+        low_confidence = False
+        follow_up_question = ""
+        rag_meta: dict = {
+            "retrieval_method": None,
+            "sop_chunk_ids": None,
+        }
+        if use_rag:
+            retrieved_result = self.retriever.retrieve_context(
+                working_query, scene=scene
+            )
+            retrieved_context = retrieved_result["context"]
+            strong_hit = retrieved_result["strong_hit"]
+            low_confidence = retrieved_result.get("low_confidence", False)
+            follow_up_question = retrieved_result.get("follow_up_question", "")
+            rag_meta = {
+                "retrieval_method": retrieved_result.get("retrieval_method"),
+                "sop_chunk_ids": retrieved_result.get("sop_chunk_ids"),
+            }
+
+        rounds = (
+            max_history_rounds
+            if max_history_rounds is not None
+            else MAX_HISTORY_ROUNDS
+        )
         messages = build_messages(
             user_input=working_query,
             scene=scene,
             history=self.history,
-            max_history_rounds=MAX_HISTORY_ROUNDS,
+            max_history_rounds=rounds,
             retrieved_context=retrieved_context,
             strong_hit=strong_hit,
             subtask=subtask,
             low_confidence=low_confidence,
             follow_up_question=follow_up_question,
+            skill_body=skill_body,
+            use_rag_evidence=use_rag,
+            merchant_notes=merchant_notes,
         )
 
         if self.verbose:
             print(f"[Router] scene={scene} | subtask={subtask}")
-            if retrieved_result.get("retrieval_method") == "merged_policy_sop":
+            if use_rag and rag_meta.get("retrieval_method") == "merged_policy_sop":
                 print(
-                    f"[RAG] merged | sop_chunks={retrieved_result.get('sop_chunk_ids', [])}"
+                    f"[RAG] merged | sop_chunks={rag_meta.get('sop_chunk_ids', [])}"
                 )
 
-        response = self.llm.chat(messages, retrieved_context=retrieved_context)
+        response = self.llm.chat(
+            messages,
+            retrieved_context=retrieved_context if use_rag else "",
+        )
 
         if self.verbose:
             log_trace(user_input, scene, subtask, retrieved_context, response)
 
         self._append_history(user_input, response)
+        self.last_turn_meta = {
+            "scene": scene,
+            "subtask": subtask,
+            "skill_id": skill_id,
+            "skill_reason": skill_reason,
+        }
         self._log_turn(
             user_input,
             working_query,
             scene,
             subtask,
             response,
-            "llm_api",
-            extra={"model": self.llm_config.resolved_model(), **rag_meta},
+            "llm_api_skill" if skill_id else "llm_api",
+            extra={
+                "model": self.llm_config.resolved_model(),
+                "skill_id": skill_id,
+                "skill_reason": skill_reason,
+                **rag_meta,
+            },
         )
         return response
 
