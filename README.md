@@ -1,107 +1,81 @@
-# Buyer Agent — 电商买手智能助手
+# Buyer Agent — 电商买手智能助手（面试展示仓）
 
-基于 **Qwen2.5-7B（QLoRA 微调）+ 双库 RAG + 规则 Router + 结构化业务 API** 的垂直领域 Agent，面向 Temu 全托管买手场景：政策咨询、核价、备货、审版、限流申诉等。
+基于 **DeepSeek 等 API + Policy/SOP 双库 RAG + FAQ 缓存 + Router + 结构化业务 API** 的买手场景 Agent：政策咨询、问卷入口、核价/备货协同、审版与限流申诉。
 
-> 本仓库为**面试/开源展示版**：含核心代码、脱敏政策库与 **2,146 条 SOP chunk**，不含原始 PPT/PDF、群聊记录与内部研发日志。
+> **展示版**：含核心代码、脱敏政策库与 **2,146 条 SOP chunk**、27 条 FAQ；不含原始文档、真实对话日志与密钥。  
+> 上传范围说明：`docs/PUBLIC_SYNC_CHECKLIST.md`
 
-## 系统架构
+## 怎么打开网页（本机演示）
+
+```powershell
+cd mybuyer_agent-github
+copy .env.example .env   # 可选：填 DEEPSEEK_API_KEY
+py -3.9 -m pip install fastapi uvicorn pyyaml pydantic openai jieba rank-bm25
+py -3.9 -m uvicorn web_server:app --reload --host 127.0.0.1 --port 8001
+```
+
+浏览器打开 **http://127.0.0.1:8001** → 填写 **商家 ID** → 点 **「进入会话」** → 发消息。
+
+| 地址 | 说明 |
+|------|------|
+| http://127.0.0.1:8001 | 聊天 |
+| http://127.0.0.1:8001/health | Key / 记忆库状态 |
+
+Windows 可双击 `启动网页.bat`（需已安装 Python 3.9）。
+
+## 系统架构（2026-07-29）
 
 ```text
-User Input
-  → Query Optimizer（上下文补全 / 去噪 / 术语对齐）
-  → Router（scene + subtask）
-  → Business API（备货 / 核价，Pydantic + Mock API）
-  → MergedRetriever（policy_kb + SOP，BM25 / Hybrid + 可选 Rerank）
-  → LLM（本地微调 Qwen 或 DeepSeek 等 OpenAI 兼容 API）
-  → Evidence-bound 买手口吻回复
+User（浏览器 / cli_api）
+  → Query Optimizer → Router
+  → L1 精确缓存 → L2 语义缓存 → L3 FAQ（policy 直出）
+  → Business API（备货/核价 Mock）
+  → MergedRetriever（policy_kb + sop_chunks）
+  → LLM + Evidence-bound Prompt
 ```
+
+本地 **Qwen + LoRA** 入口仍保留在 `cli.py`（可选）；**主展示链路为 API 版** `app_api.py` / `web_server.py`。
 
 ## 目录结构
 
 ```text
-mybuyer_agent-github/
-├── cli.py / cli_api.py     # 本地 GPU 版 / API 版
-├── app.py / app_api.py
-├── router.py               # 8 类场景路由
-├── query_optimizer.py
-├── retriever.py            # policy_kb 混合检索
-├── rag/                    # SOP 入库 · 索引 · 评测 · 双库 merge
-│   ├── data/sop_chunks.jsonl
-│   ├── eval/rag_eval_50.jsonl
-│   └── merged_retriever.py
-├── business/               # 备货 / 核价结构化 API
-├── kb/                     # 政策知识库（脱敏摘要）
-├── data/                   # Router 评测集（50 条）
-├── autodl_eval/            # 云端 SFT 对比脚本
-└── docs/                   # 架构与面试要点
+├── app_api.py / web_server.py   # API 主链路 + 网页
+├── faq/ cache/ flywheel/        # FAQ、缓存、日志飞轮
+├── memory/ secrets/             # 商家记忆（Key 仅本地 example）
+├── router.py query_optimizer.py
+├── rag/                         # SOP 入库 · 混合检索 · 评测
+├── business/                    # 备货 / 核价
+├── kb/ data/                    # 政策、FAQ、Router/注入评测集
+├── scripts/                     # build_policy_faq 等
+└── docs/                        # 架构、变更摘要、上传清单
 ```
 
-## 快速开始
-
-### 1. 无 GPU、无 API Key（逻辑与评测）
+## 快速开始（无 Key）
 
 ```bash
 pip install pydantic jieba rank-bm25
 python test_business_api.py
 python router_eval.py
-python query_optimizer_test.py
+python scripts/build_policy_faq.py
 python -m rag.run_eval_recall --bm25-only --no-rerank
-```
-
-### 2. DeepSeek API 聊天（含 SOP RAG）
-
-```bash
-pip install pydantic openai jieba rank-bm25
-# 在 cli_api.py 顶部填写 API_KEY，或启动时交互输入
-python cli_api.py
-```
-
-### 3. 本地微调 Qwen
-
-```bash
-pip install -r requirements.txt
-cp .env.example .env   # 填写 MODEL_ID、ADAPTER_PATH
-python cli.py
-```
-
-### 4. 完整 RAG 管线（可选）
-
-```bash
-pip install -r requirements-rag.txt
-python -m rag.build_index --bm25-only
-python -m rag.run_ablation_eval
 ```
 
 ## 核心能力
 
 | 模块 | 说明 |
 | --- | --- |
-| **Router** | 关键词打分 + 优先级消歧，8 类业务场景 |
-| **Query Optimizer** | SPU/SKC 补全、错别字、术语对齐、多意图标记 |
-| **双库 RAG** | `policy_kb` + 84 份 SOP → 2,146 chunk；BM25 + 向量 RRF + Rerank |
-| **Evidence Prompt** | 生成仅依据【检索证据】，降低政策幻觉 |
-| **Business API** | `StockOrderRequest` / `PriceReviewRequest`，Mock 可换 HTTP |
-| **评测** | Router 50 条 + RAG Recall@5 + 消融 E0～E2 脚本 |
+| **FAQ + 缓存** | policy_kb 衍生问法层；高频政策零 LLM 直出 |
+| **Router** | 8 类场景，50 条评测 V2 100% |
+| **RAG** | 双库 merge、Evidence 约束、Recall/RAGAS |
+| **Business** | Pydantic 槽位 + Mock API |
+| **安全评测** | `run_prompt_injection_eval.py`（50 条） |
 
-## 评测数据
+## 文档
 
-- `data/router_eval_50.jsonl` — Router 离线评测
-- `rag/eval/rag_eval_50.jsonl` — RAG 评测（10 条 gold chunk 标注）
-- `rag/data/ablation_results.json` — E0 BM25 Recall@5 = 0.50（gold 子集）
-- `autodl_eval/test_dataset_100.jsonl` — 基座 vs SFT 对比用例
-
-## 未包含内容（隐私与体积）
-
-- 原始商家群聊 / 清洗前 JSONL
-- 内部研发日志、API 调用日志、Cursor 导出脚本
-- `rag_buyer_file/` 原始 PPT/PDF（仅保留结构化 chunk）
-- 模型权重与 LoRA checkpoint
-
-
-## 技术栈
-
-Python 3.9+ · PyTorch · Transformers · PEFT · Pydantic · OpenAI SDK · jieba · rank-bm25 · sentence-transformers · FAISS · RAGAS（可选）
+- [ARCHITECTURE.md](docs/ARCHITECTURE.md)
+- [CHANGELOG_2026-07.md](docs/CHANGELOG_2026-07.md)
+- [WHAT_IS_EXCLUDED.md](docs/WHAT_IS_EXCLUDED.md)
 
 ## License
 
-MIT（知识库与模型授权请自行合规）
+MIT — 见 [LICENSE](LICENSE)

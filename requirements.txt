@@ -13,6 +13,11 @@ jieba>=0.42.1
 rank-bm25>=0.2.2
 sentence-transformers>=2.2.0
 
+# Web 入口（web_server.py）
+fastapi>=0.100.0
+uvicorn>=0.23.0
+pyyaml>=6.0
+
 # 可选
 python-dotenv>=1.0.0
 

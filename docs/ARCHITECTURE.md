@@ -1,44 +1,53 @@
 # 架构说明
 
-## 推理双模式
+## 推理模式
 
 | 入口 | 类 | LLM |
 | --- | --- | --- |
-| `cli.py` | `BuyerAgentApp` | 本地 Qwen2.5-7B + LoRA |
-| `cli_api.py` | `BuyerAgentApiApp` | DeepSeek 等 HTTP API |
+| `web_server.py` / `cli_api.py` | `BuyerAgentApiApp` | DeepSeek 等 HTTP API（**推荐展示**） |
+| `cli.py` | `BuyerAgentApp` | 本地 Qwen2.5-7B + LoRA（可选，需自备权重） |
 
-二者共享：QueryOptimizer、Router、MergedRetriever（或 Retriever）、BusinessActionExecutor、`build_messages`。
+共享：QueryOptimizer、Router、FAQ/Cache 快路径、MergedRetriever、BusinessActionExecutor、`build_messages`。
 
-## 检索双库
+## 请求路径（API 版）
 
 ```text
-MergedRetriever
-  ├─ Retriever(policy_kb.md)     # 轻量政策摘要，响应快
-  └─ SopHybridRetriever          # sop_chunks.jsonl，BM25 / Hybrid / Rerank
-         └─ parent 块拼入 Evidence（Small-to-Big）
+1. QueryOptimizer（可选）
+2. Router → scene / subtask
+3. L1 Exact cache → L2 Semantic cache → L3 FAQ BM25（policy_direct，不调 LLM）
+4. BusinessActionExecutor（备货/核价 Mock）
+5. MergedRetriever → Evidence-bound LLM
 ```
 
-`ENABLE_SOP_RAG=false` 时回退为仅 `policy_kb`。
+`ENABLE_FAQ_LAYER` / `ENABLE_RESPONSE_CACHE` 见 `config.py`。
+
+## 检索与知识分层
+
+```text
+PolicyFaqIndex(data/faq_published.jsonl)   # 问法层，政策直出
+MergedRetriever
+  ├─ Retriever(policy_kb)                  # 政策短卡
+  └─ SopHybridRetriever(sop_chunks)        # 长 SOP，BM25 / Hybrid
+```
+
+## 网页与记忆
+
+- `merchant_id` + `session_id` → SQLite `data/buyer_memory.db`（本地，gitignore）
+- `operator_id` → `secrets/operator_keys.json`（gitignore，仅 example 入库）
+- Key **不**写入模型记忆表与 system prompt
 
 ## Router 场景
 
 `policy` · `price_negotiation` · `inventory` · `product` · `activity` · `price_limit` · `approval` · `general`
 
-## 业务 API
-
-- **备货**：`StockOrderRequest(skc, quantity, size?)`
-- **核价**：`PriceReviewRequest(skc, target_price, currency, reason)`
-
-规则槽位 + Pydantic 校验；生产环境在 `business/apis.py` 接 HTTP。
-
-## RAG 管线（离线）
+## 离线管线
 
 ```text
 manifest → ingest → build_index → run_eval_recall / run_ablation_eval
+scripts/build_policy_faq.py  # policy_kb.jsonl → faq_published
 ```
 
-入库脚本支持 PDF/PPTX/DOCX；内网 URL 经 `redact.py` 脱敏。
+## 安全与评测
 
-## 生成约束
-
-`prompts.EVIDENCE_BOUND_PROMPT`：仅依据【检索证据】作答，证据不足时澄清，禁止虚假后台操作承诺。
+- `data/prompt_injection_eval_50.jsonl` + `run_prompt_injection_eval.py`
+- 机制：Evidence Prompt + RAG 接地（非硬拦截器）

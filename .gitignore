@@ -23,4 +23,9 @@ rag/index/*.pkl
 rag/index/*.npy
 rag/index/faiss.index
 data/sop_raw/
-scripts/
+data/buyer_memory.db
+data/response_cache.jsonl
+secrets/operator_keys.json
+eval_output/
+# 展示用脚本允许入库；勿提交含密钥的私有脚本
+# scripts/
